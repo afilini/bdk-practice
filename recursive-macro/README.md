@@ -23,7 +23,7 @@ pub struct ForwardedHTCL {
 
 impl ForwardedHTLC {
     pub fn get_descriptor(self) -> Result<(Descriptor<DescriptorPublicKey>, KeyMap), Error> {
-        let desc = format!(wsh(andor(pk({}),after({}),and_v(v:pk({}),sha256({})))), self.our_key, self.current_height + 6, self.their_key, self.payment_hash);
+        let desc = format!("wsh(andor(pk({}),after({}),and_v(v:pk({}),sha256({}))))", self.our_key, self.current_height + 6, self.their_key, self.payment_hash);
         Descriptor::parse_descriptor(&desc)
     }
 }

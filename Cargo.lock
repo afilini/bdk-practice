@@ -77,6 +77,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "recursive-macro"
+version = "0.1.0"
+
+[[package]]
 name = "secp256k1"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

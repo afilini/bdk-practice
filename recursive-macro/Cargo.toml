@@ -1,17 +1,8 @@
 [package]
-name = "bdk-practice"
+name = "recursive-macro"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-
 [dependencies]
-
-[workspace]
-members = [
-    "compare-pubkeys",
-    "psbt-xpub",
-    "recursive-macro",
-]

@@ -1,5 +1,5 @@
 use bitcoin::secp256k1::{self, All, Secp256k1, SecretKey};
-use bitcoin::{PrivateKey, PublicKey, XOnlyPublicKey};
+use bitcoin::{PrivateKey, XOnlyPublicKey};
 use miniscript::descriptor::{DescriptorPublicKey, DescriptorSinglePub, SinglePubKey};
 use std::str::FromStr;
 
@@ -22,7 +22,7 @@ pub fn find_key<'h>(
             DescriptorPublicKey::SinglePub(DescriptorSinglePub {
                 key: SinglePubKey::FullKey(fk),
                 ..
-            }) => &PublicKey::new(raw_pk) == fk,
+            }) => &bitcoin::PublicKey::new(raw_pk) == fk,
             DescriptorPublicKey::SinglePub(DescriptorSinglePub {
                 key: SinglePubKey::XOnly(xonly),
                 ..
@@ -34,6 +34,39 @@ pub fn find_key<'h>(
             }
         })
         .ok_or("Key not found")
+}
+
+// Another shorter approach of matching keys
+// Using DescriptorPublicKey::derive_public_key() api.
+// But this uses secp derivation and it is in general slower
+// than the match approach above.
+pub fn find_key_2<'h>(
+    needle: &SecretKey,
+    haystack: &'h [DescriptorPublicKey],
+    secp: &Secp256k1<All>,
+) -> Result<&'h DescriptorPublicKey, &'static str> {
+    // The needle pubkey we need to hit
+    let mut needle_key = secp256k1::PublicKey::from_secret_key(secp, needle);
+
+    // Iterate over the haystack, matching against the needle key
+    // until a hoit is found
+    Ok(haystack
+        .iter()
+        .find(|desc_pub| {
+            let heystack_key = desc_pub.derive_public_key(secp).unwrap().inner;
+            if heystack_key == needle_key || {
+                // Incase the above doesn't match it can be because
+                // the haystack key is X-Only, while the needle key is Odd.
+                // We try the match again with (-ve) of needle key.
+                needle_key.negate_assign(secp);
+                heystack_key == needle_key
+            } {
+                true
+            } else {
+                false
+            }
+        })
+        .ok_or("Didn't find match")?)
 }
 
 pub fn validate<

@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::{bip32, psbt};
 
 use miniscript::descriptor::{Descriptor, DescriptorPublicKey, DescriptorXKey, WshInner};
@@ -20,6 +21,7 @@ pub fn add_xpub_to_psbt(
     descriptor: &Descriptor<DescriptorPublicKey>,
     psbt: &mut psbt::PartiallySignedTransaction,
 ) -> Result<(), &'static str> {
+    let secp = Secp256k1::new();
     descriptor.for_each_key(|pk| {
         if let DescriptorPublicKey::XPub(xpub) = pk.as_key() {
             let origin = match &xpub.origin {
@@ -27,10 +29,17 @@ pub fn add_xpub_to_psbt(
                 None if xpub.xkey.depth == 0 => (root_fingerprint(&xpub), vec![].into()),
                 _ => panic!("Missing key origin"),
             };
-
-            psbt.xpub.insert(xpub.xkey, origin);
+            // Check if this key matches with the PBBT-input's bip32 keymap.
+            // We need this to ensure we are not adding unrelated keys that might
+            // be present in the descriptor, into the PSBT global keymap.
+            psbt.inputs.iter().for_each(|input| {
+                input.bip32_derivation.iter().for_each(|(_, keysource)| {
+                    if xpub.matches(keysource, &secp).is_some() {
+                        psbt.xpub.insert(xpub.xkey, origin.clone());
+                    }
+                })
+            })
         }
-
         true
     });
 
